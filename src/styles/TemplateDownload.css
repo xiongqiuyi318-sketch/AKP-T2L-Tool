@@ -1,0 +1,150 @@
+.template-download-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.template-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.template-header h2 {
+  font-size: 2rem;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.template-subtitle {
+  color: #7f8c8d;
+  font-size: 1rem;
+}
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.template-card {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.template-card:hover {
+  border-color: #3498db;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+  transform: translateY(-2px);
+}
+
+.template-icon {
+  font-size: 3rem;
+  min-width: 60px;
+  text-align: center;
+}
+
+.template-info {
+  flex: 1;
+}
+
+.template-info h3 {
+  font-size: 1.2rem;
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+}
+
+.template-info p {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.download-btn {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.download-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.download-btn:active {
+  transform: scale(0.98);
+}
+
+.template-actions {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.back-btn {
+  padding: 0.75rem 2rem;
+  background: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #7f8c8d;
+  transform: translateY(-2px);
+}
+
+.template-tips {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid #3498db;
+}
+
+.template-tips h3 {
+  color: #2c3e50;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.template-tips ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #555;
+}
+
+.template-tips li {
+  margin-bottom: 0.5rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .template-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .template-icon {
+    font-size: 2.5rem;
+  }
+  
+  .download-btn {
+    width: 100%;
+  }
+}
