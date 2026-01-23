@@ -60,36 +60,123 @@ export async function parseStoneInfo(file) {
   console.log('文件1 - 表头行索引:', headerRowIndex);
   console.log('文件1 - headers对象:', headers);
   
-  // 查找netto区域的DUZINA, SIRINA, VISINA, WGT, TOTAL PRICE列
-  let duzina = -1, sirina = -1, visina = -1, wgt = -1, totalPrice = -1;
+  // 查找BRUTTO和NETTO区域的尺寸列，以及其他列
+  let bruttoDuzina = -1, bruttoSirina = -1, bruttoVisina = -1, bruttoM3 = -1;
+  let nettoDuzina = -1, nettoSirina = -1, nettoVisina = -1, nettoM3 = -1;
+  let wgt = -1, totalPrice = -1, kupac = -1;
+  let bruttoColStart = -1, nettoColStart = -1;
   
   const searchStartRow = Math.max(1, headerRowIndex - 2);
   const searchEndRow = Math.min(headerRowIndex + 2, worksheet.rowCount);
   
+  // 第一遍：查找BRUTTO和NETTO的起始列（精确匹配，避免误判）
   for (let rowNum = searchStartRow; rowNum <= searchEndRow; rowNum++) {
     const row = worksheet.getRow(rowNum);
     row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
       const cellStr = String(cell.value || '').toUpperCase();
       
-      if (cellStr.includes('DUZINA') || cellStr.includes('长')) {
-        duzina = colNumber;
-      } else if (cellStr.includes('SIRINA') || cellStr.includes('宽')) {
-        sirina = colNumber;
-      } else if (cellStr.includes('VISINA') || cellStr.includes('高')) {
-        visina = colNumber;
-      } else if ((cellStr.includes('WGT') || cellStr.includes('重量') || cellStr.includes('吨')) && !cellStr.includes('TOTAL')) {
-        wgt = colNumber;
-      } else if (cellStr.includes('TOTAL') && cellStr.includes('PRICE')) {
-        totalPrice = colNumber;
+      // 只在bruttoColStart还未找到时查找BRUTTO
+      if (cellStr.includes('BRUTTO') && bruttoColStart === -1) {
+        bruttoColStart = colNumber;
+        console.log(`文件1 - 找到BRUTTO区域起始列: 第${colNumber}列，表头内容: "${cell.value}"`);
+      }
+      // 只在nettoColStart还未找到时查找NETTO（排除WGT等干扰）
+      if (cellStr.includes('NETTO') && !cellStr.includes('WGT') && nettoColStart === -1) {
+        nettoColStart = colNumber;
+        console.log(`文件1 - 找到NETTO区域起始列: 第${colNumber}列，表头内容: "${cell.value}"`);
       }
     });
-    
-    if (duzina !== -1 && sirina !== -1 && visina !== -1 && wgt !== -1 && totalPrice !== -1) break;
   }
   
-  headers.duzina = duzina;
-  headers.sirina = sirina;
-  headers.visina = visina;
+  // 第二遍：在BRUTTO和NETTO区域查找具体的列，以及其他列
+  for (let rowNum = searchStartRow; rowNum <= searchEndRow; rowNum++) {
+    const row = worksheet.getRow(rowNum);
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      const cellStr = String(cell.value || '').toUpperCase();
+      
+      // BRUTTO区域的列（在bruttoColStart附近，直到nettoColStart之前）
+      const bruttoRangeEnd = nettoColStart !== -1 ? nettoColStart : colNumber + 10;
+      if (bruttoColStart !== -1 && colNumber >= bruttoColStart && colNumber < bruttoRangeEnd) {
+        if ((cellStr.includes('DUZINA') || cellStr.includes('长')) && bruttoDuzina === -1) {
+          bruttoDuzina = colNumber;
+          console.log(`文件1 - 找到BRUTTO DUZINA列: 第${colNumber}列`);
+        } else if ((cellStr.includes('SIRINA') || cellStr.includes('宽')) && bruttoSirina === -1) {
+          bruttoSirina = colNumber;
+          console.log(`文件1 - 找到BRUTTO SIRINA列: 第${colNumber}列`);
+        } else if ((cellStr.includes('VISINA') || cellStr.includes('高')) && bruttoVisina === -1) {
+          bruttoVisina = colNumber;
+          console.log(`文件1 - 找到BRUTTO VISINA列: 第${colNumber}列`);
+        } else if ((cellStr.includes('M3') || cellStr.includes('立方')) && bruttoM3 === -1) {
+          bruttoM3 = colNumber;
+          console.log(`文件1 - 找到BRUTTO M3列: 第${colNumber}列`);
+        }
+      }
+      
+      // NETTO区域的列（在nettoColStart附近）
+      if (nettoColStart !== -1 && colNumber >= nettoColStart && colNumber < nettoColStart + 6) {
+        if ((cellStr.includes('DUZINA') || cellStr.includes('长')) && nettoDuzina === -1) {
+          nettoDuzina = colNumber;
+          console.log(`文件1 - 找到NETTO DUZINA列: 第${colNumber}列`);
+        } else if ((cellStr.includes('SIRINA') || cellStr.includes('宽')) && nettoSirina === -1) {
+          nettoSirina = colNumber;
+          console.log(`文件1 - 找到NETTO SIRINA列: 第${colNumber}列`);
+        } else if ((cellStr.includes('VISINA') || cellStr.includes('高')) && nettoVisina === -1) {
+          nettoVisina = colNumber;
+          console.log(`文件1 - 找到NETTO VISINA列: 第${colNumber}列`);
+        } else if ((cellStr.includes('M3') || cellStr.includes('立方')) && nettoM3 === -1) {
+          nettoM3 = colNumber;
+          console.log(`文件1 - 找到NETTO M3列: 第${colNumber}列`);
+        }
+      }
+      
+      // 其他列（不受BRUTTO/NETTO限制，在整个范围查找）
+      if ((cellStr.includes('WGT') || cellStr.includes('重量') || cellStr.includes('吨')) && !cellStr.includes('TOTAL') && wgt === -1) {
+        wgt = colNumber;
+        console.log(`文件1 - 找到WGT列: 第${colNumber}列`);
+      }
+      
+      if ((cellStr.includes('UNIT') && cellStr.includes('PRICE')) || cellStr.includes('单价')) {
+        if (!headers.unitPrice) {
+          headers.unitPrice = colNumber;
+          console.log(`文件1 - 找到UNIT PRICE列: 第${colNumber}列，表头内容: "${cellStr}"`);
+        }
+      }
+      
+      if ((cellStr.includes('TOTAL') && cellStr.includes('PRICE')) && totalPrice === -1) {
+        totalPrice = colNumber;
+        console.log(`文件1 - 找到TOTAL PRICE列: 第${colNumber}列`);
+      }
+      
+      if ((cellStr.includes('KUPAC') || cellStr.includes('客户')) && kupac === -1) {
+        kupac = colNumber;
+        console.log(`文件1 - 找到KUPAC列: 第${colNumber}列，表头内容: "${cellStr}"`);
+      }
+    });
+  }
+  
+  // 直接使用找到的BRUTTO/NETTO列
+  headers.bruttoDuzina = bruttoDuzina;
+  headers.bruttoSirina = bruttoSirina;
+  headers.bruttoVisina = bruttoVisina;
+  headers.bruttoM3 = bruttoM3;
+  headers.nettoDuzina = nettoDuzina;
+  headers.nettoSirina = nettoSirina;
+  headers.nettoVisina = nettoVisina;
+  headers.nettoM3 = nettoM3;
+  headers.kupac = kupac;
+  
+  // 用于T2L的E13:G20（NETTO尺寸）
+  headers.duzina = nettoDuzina;
+  headers.sirina = nettoSirina;
+  headers.visina = nettoVisina;
+  
+  console.log('文件1 - 完整headers对象:', {
+    blkNo: headers.blkNo,
+    cate: headers.cate,
+    bruttoDuzina, bruttoSirina, bruttoVisina, bruttoM3,
+    nettoDuzina, nettoSirina, nettoVisina, nettoM3,
+    wgt, unitPrice: headers.unitPrice, totalPrice, kupac
+  });
   headers.wgt = wgt;
   headers.totalPrice = totalPrice;
   
@@ -160,20 +247,74 @@ export async function parseStoneInfo(file) {
     const unitPriceRaw = headers.unitPrice ? row.getCell(headers.unitPrice).value : null;
     const totalPriceRaw = headers.totalPrice !== -1 ? row.getCell(headers.totalPrice).value : null;
     
+    // 读取BRUTTO尺寸
+    const bruttoDuzinaRaw = headers.bruttoDuzina !== -1 ? row.getCell(headers.bruttoDuzina).value : null;
+    const bruttoSirinaRaw = headers.bruttoSirina !== -1 ? row.getCell(headers.bruttoSirina).value : null;
+    const bruttoVisinaRaw = headers.bruttoVisina !== -1 ? row.getCell(headers.bruttoVisina).value : null;
+    const bruttoM3Raw = headers.bruttoM3 !== -1 ? row.getCell(headers.bruttoM3).value : null;
+    
+    // 读取NETTO尺寸
+    const nettoDuzinaRaw = headers.nettoDuzina !== -1 ? row.getCell(headers.nettoDuzina).value : null;
+    const nettoSirinaRaw = headers.nettoSirina !== -1 ? row.getCell(headers.nettoSirina).value : null;
+    const nettoVisinaRaw = headers.nettoVisina !== -1 ? row.getCell(headers.nettoVisina).value : null;
+    const nettoM3Raw = headers.nettoM3 !== -1 ? row.getCell(headers.nettoM3).value : null;
+    
+    // 读取KUPAC（分两列，如 "HW" + "-" + "1" = "HW-1"）
+    const kupacPart1Raw = headers.kupac !== -1 ? row.getCell(headers.kupac).value : '';
+    const kupacPart2Raw = headers.kupac !== -1 ? row.getCell(headers.kupac + 1).value : '';
+    
+    const kupacPart1 = kupacPart1Raw ? String(kupacPart1Raw).trim() : '';
+    const kupacPart2 = kupacPart2Raw ? String(kupacPart2Raw).trim() : '';
+    
+    // 拼接KUPAC（如果两部分都有值，用"-"连接）
+    let kupacFull = '';
+    if (kupacPart1 && kupacPart2) {
+      kupacFull = `${kupacPart1}-${kupacPart2}`;
+    } else if (kupacPart1) {
+      kupacFull = kupacPart1;
+    } else if (kupacPart2) {
+      kupacFull = kupacPart2;
+    }
+    
+    console.log(`文件1 - 第${rowNum}行 KUPAC: 列${headers.kupac}="${kupacPart1Raw}", 列${headers.kupac + 1}="${kupacPart2Raw}", 拼接结果="${kupacFull}"`);
+    
     const totalPriceValue = extractNumber(totalPriceRaw);
     const unitPriceValue = extractNumber(unitPriceRaw);
+    const nettoM3Value = extractNumber(nettoM3Raw);
     
-    console.log(`文件1 - 第${rowNum}行 ${fullBlkNo}: totalPrice=${totalPriceValue}, unitPrice=${unitPriceValue}`);
+    console.log(`文件1 - 第${rowNum}行 ${fullBlkNo}:`, {
+      totalPrice: totalPriceValue,
+      unitPrice: unitPriceValue,
+      unitPriceRaw: unitPriceRaw,
+      unitPriceCol: headers.unitPrice,
+      nettoM3: nettoM3Value,
+      nettoM3Raw: nettoM3Raw,
+      nettoM3Col: headers.nettoM3,
+      kupac: kupacFull
+    });
     
     stoneData[fullBlkNo] = {
       blkNo: blkNoNumberStr,   // 数字部分：0205
       blkNoYear: blkNoYearStr, // 年份部分：/25
       fullBlkNo: fullBlkNo,    // 完整编号：0205/25
       cate: headers.cate ? (row.getCell(headers.cate).value || '') : '',
+      // NETTO尺寸（兼容旧代码）
       duzina: extractNumber(duzinaRaw),
       sirina: extractNumber(sirinaRaw),
       visina: extractNumber(visinaRaw),
+      // BRUTTO尺寸
+      bruttoDuzina: extractNumber(bruttoDuzinaRaw),
+      bruttoSirina: extractNumber(bruttoSirinaRaw),
+      bruttoVisina: extractNumber(bruttoVisinaRaw),
+      bruttoM3: extractNumber(bruttoM3Raw),
+      // NETTO尺寸
+      nettoDuzina: extractNumber(nettoDuzinaRaw),
+      nettoSirina: extractNumber(nettoSirinaRaw),
+      nettoVisina: extractNumber(nettoVisinaRaw),
+      nettoM3: extractNumber(nettoM3Raw),
+      // 其他
       wgt: extractNumber(wgtRaw),
+      kupac: kupacFull,  // 拼接后的完整KUPAC（如 "HW 1"）
       unitPrice: unitPriceValue,
       totalPrice: totalPriceValue
     };

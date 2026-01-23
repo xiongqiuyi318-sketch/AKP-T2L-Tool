@@ -5,6 +5,7 @@ import TemplateDownload from './components/TemplateDownload';
 import { parseStoneInfo, parseContainerPlan, loadTemplate } from './utils/excelParser';
 import { matchStoneData } from './utils/dataProcessor';
 import { buildWorkbookWithSheets, downloadExcel } from './utils/excelWriter';
+import { generatePackingList, downloadPackingList } from './utils/packingListWriter';
 import './App.css';
 
 function App() {
@@ -102,7 +103,52 @@ function App() {
     }
   };
 
+  const handleGeneratePackingList = async () => {
+    if (!stoneInfo || !containers) {
+      alert('请先上传文件1和文件2');
+      return;
+    }
+
+    setIsGenerating(true);
+    setProgress('正在生成Packing List...');
+
+    try {
+      // 为每个柜匹配石头数据
+      const containersWithData = containers.map((container, index) => {
+        const { matchedStones } = matchStoneData(
+          stoneInfo, 
+          container.blockNrList
+        );
+
+        return {
+          ctnNo: container.ctnNo,
+          matchedStones
+        };
+      });
+
+      setProgress('正在生成Excel文件...');
+
+      // 生成Packing List
+      const workbook = await generatePackingList(containersWithData);
+
+      setProgress('正在下载文件...');
+
+      // 下载文件
+      await downloadPackingList(workbook, containers.length);
+
+      setProgress('');
+      alert(`Packing List 生成成功！包含 ${containers.length} 个柜`);
+    } catch (error) {
+      alert(`生成失败: ${error.message}`);
+      console.error(error);
+    } finally {
+      setIsGenerating(false);
+      setProgress('');
+    }
+  };
+
   const isReadyToGenerate = stoneInfo && containers && template && startNumber > 0 && year > 0;
+  const isReadyForPackingList = stoneInfo && containers;
 
   // 如果显示模板页面，则渲染TemplateDownload组件
   if (showTemplates) {
@@ -173,6 +219,14 @@ function App() {
             disabled={!isReadyToGenerate || isGenerating}
           >
             {isGenerating ? '生成中...' : '🚀 生成T2L文件'}
+          </button>
+          
+          <button 
+            className="packing-list-btn"
+            onClick={handleGeneratePackingList}
+            disabled={!isReadyForPackingList || isGenerating}
+          >
+            {isGenerating ? '生成中...' : '📦 生成 Packing List'}
           </button>
           
           {progress && (
