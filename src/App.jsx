@@ -6,6 +6,7 @@ import { parseStoneInfo, parseContainerPlan, loadTemplate } from './utils/excelP
 import { matchStoneData } from './utils/dataProcessor';
 import { buildWorkbookWithSheets, downloadExcel } from './utils/excelWriter';
 import { generatePackingList, downloadPackingList } from './utils/packingListWriter';
+import { parseVgmFile, generatePlWithCtnNoFromPacking, downloadPlWithCtnNo } from './utils/vgmWriter';
 import './App.css';
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
   const [stoneInfo, setStoneInfo] = useState(null);
   const [containers, setContainers] = useState(null);
   const [template, setTemplate] = useState(null);
+  const [vgmData, setVgmData] = useState(null);
   const [startNumber, setStartNumber] = useState(1);
   const [year, setYear] = useState(new Date().getFullYear());
   const [isGenerating, setIsGenerating] = useState(false);
@@ -32,6 +34,12 @@ function App() {
   const handleFile3Upload = async (file) => {
     const templateData = await loadTemplate(file);
     setTemplate(templateData);
+  };
+
+  const handleVgmUpload = async (file) => {
+    const parsedVgm = await parseVgmFile(file);
+    setVgmData(parsedVgm);
+    console.log('VGM解析结果:', parsedVgm);
   };
 
   const handleGenerate = async () => {
@@ -147,8 +155,44 @@ function App() {
     }
   };
 
+  const handleGeneratePlWithCtnNo = async () => {
+    if (!stoneInfo || !containers || !vgmData) {
+      alert('请先上传文件1、文件2和VGM文件');
+      return;
+    }
+
+    setIsGenerating(true);
+    setProgress('正在生成PL WITH CTN NO...');
+
+    try {
+      const containersWithData = containers.map((container) => {
+        const { matchedStones } = matchStoneData(
+          stoneInfo,
+          container.blockNrList
+        );
+
+        return {
+          ctnNo: container.ctnNo,
+          matchedStones
+        };
+      });
+
+      const workbook = await generatePlWithCtnNoFromPacking(containersWithData, vgmData);
+      await downloadPlWithCtnNo(workbook);
+      setProgress('');
+      alert('PL WITH CTN NO. 生成成功！');
+    } catch (error) {
+      alert(`生成失败: ${error.message}`);
+      console.error(error);
+    } finally {
+      setIsGenerating(false);
+      setProgress('');
+    }
+  };
+
   const isReadyToGenerate = stoneInfo && containers && template && startNumber > 0 && year > 0;
   const isReadyForPackingList = stoneInfo && containers;
+  const isReadyForPlWithCtn = !!stoneInfo && !!containers && !!vgmData;
 
   // 如果显示模板页面，则渲染TemplateDownload组件
   if (showTemplates) {
@@ -200,6 +244,11 @@ function App() {
             label="文件3: T2L模板 (空白T2L表格模板)"
             onFileSelect={handleFile3Upload}
           />
+
+          <FileUploader
+            label="文件4: VGM (用于生成PL WITH CTN NO.)"
+            onFileSelect={handleVgmUpload}
+          />
         </section>
 
         <section className="parameter-section">
@@ -228,6 +277,14 @@ function App() {
           >
             {isGenerating ? '生成中...' : '📦 生成 Packing List'}
           </button>
+
+          <button
+            className="pl-ctn-btn"
+            onClick={handleGeneratePlWithCtnNo}
+            disabled={!isReadyForPlWithCtn || isGenerating}
+          >
+            {isGenerating ? '生成中...' : '🧾 生成 PL WITH CTN NO.'}
+          </button>
           
           {progress && (
             <div className="progress-info">
@@ -245,6 +302,7 @@ function App() {
             <li>设置<strong>T2L起始序号</strong>和<strong>年份</strong></li>
             <li>点击"生成T2L文件"按钮，系统将自动生成一个包含多个工作表的Excel文件</li>
             <li>每个工作表对应一个集装箱，工作表名为CTN编号</li>
+            <li>上传<strong>文件1、文件2、VGM文件</strong>后，可基于Packing List明细生成"PL WITH CTN NO."</li>
           </ol>
         </section>
       </main>

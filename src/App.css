@@ -146,6 +146,30 @@ body {
   box-shadow: none;
 }
 
+.pl-ctn-btn {
+  background: linear-gradient(135deg, #ff9966 0%, #ff5e62 100%);
+  color: white;
+  border: none;
+  padding: 15px 40px;
+  font-size: 18px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(255, 94, 98, 0.4);
+}
+
+.pl-ctn-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 94, 98, 0.6);
+}
+
+.pl-ctn-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .action-section {
   display: flex;
   flex-wrap: wrap;
@@ -210,6 +234,14 @@ body {
 
   .generate-btn {
     width: 100%;
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+
+  .packing-list-btn,
+  .pl-ctn-btn {
+    width: 100%;
+    margin-left: 0;
     padding: 12px 20px;
     font-size: 16px;
   }

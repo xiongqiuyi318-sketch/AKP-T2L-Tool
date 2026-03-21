@@ -20,6 +20,12 @@ function TemplateDownload({ onBack }) {
       description: 'T2L模板，用于生成最终的交付单据',
       filename: 'T2L.xlsx',
       icon: '📄'
+    },
+    {
+      name: '文件4模板：VGM',
+      description: 'VGM模板，包含CNTR NO.、SEAL NO.等信息',
+      filename: 'VGM.xlsx',
+      icon: '🚢'
     }
   ];
 
@@ -65,7 +71,7 @@ function TemplateDownload({ onBack }) {
       <div className="template-tips">
         <h3>💡 使用提示</h3>
         <ul>
-          <li>下载所有3个模板文件</li>
+          <li>下载所有4个模板文件</li>
           <li>按照模板格式填写数据（不要修改表头）</li>
           <li>返回主界面上传文件并生成T2L</li>
         </ul>
