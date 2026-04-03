@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import FileUploader from './components/FileUploader';
 import ParameterInput from './components/ParameterInput';
 import TemplateDownload from './components/TemplateDownload';
@@ -7,7 +7,7 @@ import { matchStoneData } from './utils/dataProcessor';
 import { buildWorkbookWithSheets, downloadExcel } from './utils/excelWriter';
 import { generatePackingList, downloadPackingList } from './utils/packingListWriter';
 import { parseVgmFile, generatePlWithCtnNoFromPacking, downloadPlWithCtnNo } from './utils/vgmWriter';
-import { deleteCloudFile, fetchCustomerFiles, fetchHistory, getSignedDownloadUrl, uploadBufferToCloud, uploadFileToCloud } from './utils/cloudApi';
+import { deleteCloudFile, fetchCustomerFiles, getSignedDownloadUrl, uploadBufferToCloud, uploadFileToCloud } from './utils/cloudApi';
 import './App.css';
 
 function App() {
@@ -21,24 +21,14 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [operatorName, setOperatorName] = useState('');
   const [cloudEnabled, setCloudEnabled] = useState(true);
   const [cloudFiles, setCloudFiles] = useState([]);
-  const [historyRecords, setHistoryRecords] = useState([]);
-
-  useEffect(() => {
-    fetchHistory(20).then(setHistoryRecords).catch(() => {});
-  }, []);
 
   const refreshCloudData = async (customer) => {
     if (!customer) return;
     try {
-      const [files, records] = await Promise.all([
-        fetchCustomerFiles(customer),
-        fetchHistory(20)
-      ]);
+      const files = await fetchCustomerFiles(customer);
       setCloudFiles(files);
-      setHistoryRecords(records);
     } catch (error) {
       console.warn('刷新云端数据失败:', error);
     }
@@ -50,7 +40,7 @@ function App() {
       await uploadFileToCloud({
         file,
         customer: customerName,
-        operator: operatorName || 'unknown',
+        operator: 'unknown',
         fileType,
         kind: 'inputs'
       });
@@ -68,7 +58,7 @@ function App() {
         buffer,
         filename,
         customer: customerName,
-        operator: operatorName || 'unknown',
+        operator: 'unknown',
         fileType
       });
       await refreshCloudData(customerName);
@@ -95,7 +85,7 @@ function App() {
     const ok = confirm(`确定删除云端文件？\n${pathname}`);
     if (!ok) return;
     try {
-      await deleteCloudFile({ pathname, customer: customerName, operator: operatorName || 'unknown' });
+      await deleteCloudFile({ pathname, customer: customerName, operator: 'unknown' });
       await refreshCloudData(customerName);
       alert('删除成功');
     } catch (error) {
@@ -363,15 +353,6 @@ function App() {
                 placeholder="例如：HW / AKP"
               />
             </label>
-            <label>
-              操作人
-              <input
-                type="text"
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                placeholder="例如：Sabrina"
-              />
-            </label>
             <label className="checkbox-line">
               <input
                 type="checkbox"
@@ -412,16 +393,6 @@ function App() {
                         删除
                       </button>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3>最近记录</h3>
-              <ul>
-                {historyRecords.slice(0, 8).map((record, idx) => (
-                  <li key={`${record.time}-${idx}`}>
-                    [{record.time}] {record.operator} / {record.customer} / {record.fileName}
                   </li>
                 ))}
               </ul>
