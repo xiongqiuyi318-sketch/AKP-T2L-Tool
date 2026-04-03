@@ -287,8 +287,8 @@ export async function generatePlWithCtnNoFromPacking(containersWithData, vgmData
  * Download generated workbook.
  * @param {ExcelJS.Workbook} workbook
  */
-export async function downloadPlWithCtnNo(workbook) {
-  const filename = 'PL WITH CTN NO.xlsx';
+export async function downloadPlWithCtnNo(workbook, customFilename) {
+  const filename = customFilename || 'PL WITH CTN NO.xlsx';
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

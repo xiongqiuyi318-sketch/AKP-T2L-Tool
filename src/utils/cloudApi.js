@@ -28,10 +28,11 @@ async function postJson(url, body) {
   return data;
 }
 
-export async function uploadFileToCloud({ file, customer, operator, fileType, kind = 'inputs' }) {
+export async function uploadFileToCloud({ file, customer, batchCode, operator, fileType, kind = 'inputs' }) {
   const base64Data = await bufferToBase64(await file.arrayBuffer());
   return postJson('/api/upload', {
     customer,
+    batchCode,
     operator,
     fileType,
     kind,
@@ -41,10 +42,11 @@ export async function uploadFileToCloud({ file, customer, operator, fileType, ki
   });
 }
 
-export async function uploadBufferToCloud({ buffer, filename, customer, operator, fileType }) {
+export async function uploadBufferToCloud({ buffer, filename, customer, batchCode, operator, fileType }) {
   const base64Data = await bufferToBase64(buffer);
   return postJson('/api/upload', {
     customer,
+    batchCode,
     operator,
     fileType,
     kind: 'outputs',
@@ -54,12 +56,18 @@ export async function uploadBufferToCloud({ buffer, filename, customer, operator
   });
 }
 
-export async function fetchCustomerFiles(customer) {
-  const res = await fetch(`/api/files?customer=${encodeURIComponent(customer)}`);
+export async function fetchCustomerFiles(customer, batchCode) {
+  const query = new URLSearchParams({ customer });
+  if (batchCode) query.set('batchCode', batchCode);
+  const res = await fetch(`/api/files?${query.toString()}`);
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.error || '读取客户文件失败');
-  return data.files || [];
+  return {
+    files: data.files || [],
+    legacyFiles: data.legacyFiles || [],
+    batches: data.batches || []
+  };
 }
 
 export async function fetchHistory(limit = 20) {

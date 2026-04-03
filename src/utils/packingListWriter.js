@@ -123,8 +123,8 @@ export async function generatePackingList(containers) {
  * @param {ExcelJS.Workbook} workbook - workbook对象
  * @param {number} containerCount - 柜数
  */
-export async function downloadPackingList(workbook, containerCount) {
-  const filename = `Packing List_${containerCount}.xlsx`;
+export async function downloadPackingList(workbook, containerCount, customFilename) {
+  const filename = customFilename || `Packing List_${containerCount}.xlsx`;
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { 
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 

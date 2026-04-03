@@ -21,14 +21,47 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [batchCode, setBatchCode] = useState('');
   const [cloudEnabled, setCloudEnabled] = useState(true);
   const [cloudFiles, setCloudFiles] = useState([]);
+  const [legacyFiles, setLegacyFiles] = useState([]);
+  const [recentBatches, setRecentBatches] = useState([]);
 
-  const refreshCloudData = async (customer) => {
-    if (!customer) return;
+  const normalizeText = (value) => String(value || '').trim();
+  const toSlug = (value) =>
+    String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'default';
+  const toSafeFileNameSegment = (value, fallback) =>
+    String(value || '')
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '') || fallback;
+
+  const validateBatchCode = () => {
+    if (!cloudEnabled) return true;
+    if (!batchCode.trim()) {
+      alert('请填写批次，例如：第三批货');
+      return false;
+    }
+    const normalized = normalizeText(batchCode);
+    if (normalized !== batchCode) {
+      setBatchCode(normalized);
+    }
+    return true;
+  };
+
+  const refreshCloudData = async (customer, batch = batchCode) => {
+    if (!customer || !batch) return;
     try {
-      const files = await fetchCustomerFiles(customer);
-      setCloudFiles(files);
+      const data = await fetchCustomerFiles(toSlug(customer), toSlug(batch));
+      setCloudFiles(data.files);
+      setLegacyFiles(data.legacyFiles);
+      setRecentBatches(data.batches);
     } catch (error) {
       console.warn('刷新云端数据失败:', error);
     }
@@ -36,15 +69,17 @@ function App() {
 
   const saveInputIfEnabled = async (file, fileType) => {
     if (!cloudEnabled || !customerName.trim()) return;
+    if (!validateBatchCode()) return;
     try {
       await uploadFileToCloud({
         file,
-        customer: customerName,
+        customer: toSlug(customerName),
+        batchCode: toSlug(batchCode),
         operator: 'unknown',
         fileType,
         kind: 'inputs'
       });
-      await refreshCloudData(customerName);
+      await refreshCloudData(customerName, batchCode);
     } catch (error) {
       console.warn('云端归档失败（不影响本地解析）:', error);
     }
@@ -52,16 +87,18 @@ function App() {
 
   const saveOutputIfEnabled = async (workbook, fileType, filename) => {
     if (!cloudEnabled || !customerName.trim()) return;
+    if (!validateBatchCode()) return;
     try {
       const buffer = await workbook.xlsx.writeBuffer();
       await uploadBufferToCloud({
         buffer,
         filename,
-        customer: customerName,
+        customer: toSlug(customerName),
+        batchCode: toSlug(batchCode),
         operator: 'unknown',
         fileType
       });
-      await refreshCloudData(customerName);
+      await refreshCloudData(customerName, batchCode);
     } catch (error) {
       console.warn('云端保存失败（不影响本地下载）:', error);
       alert(`云端保存失败，但本地文件仍会下载。\n原因: ${error.message}`);
@@ -85,8 +122,8 @@ function App() {
     const ok = confirm(`确定删除云端文件？\n${pathname}`);
     if (!ok) return;
     try {
-      await deleteCloudFile({ pathname, customer: customerName, operator: 'unknown' });
-      await refreshCloudData(customerName);
+      await deleteCloudFile({ pathname, customer: toSlug(customerName), operator: 'unknown' });
+      await refreshCloudData(customerName, batchCode);
       alert('删除成功');
     } catch (error) {
       alert(`删除失败: ${error.message}`);
@@ -174,7 +211,7 @@ function App() {
 
       setProgress('正在下载文件...');
 
-      const outputFilename = `T2L_Output_${startNumber}-${startNumber + containers.length - 1}.xlsx`;
+      const outputFilename = `T2L-${toSafeFileNameSegment(customerName, 'customer')}-${toSafeFileNameSegment(batchCode, 'batch')}-${containers.length}柜.xlsx`;
       await saveOutputIfEnabled(workbook, 't2l', outputFilename);
       await downloadExcel(workbook, outputFilename);
 
@@ -219,9 +256,9 @@ function App() {
 
       setProgress('正在下载文件...');
 
-      const outputFilename = `Packing List_${containers.length}.xlsx`;
+      const outputFilename = `PL-${toSafeFileNameSegment(customerName, 'customer')}-${toSafeFileNameSegment(batchCode, 'batch')}-${containers.length}柜.xlsx`;
       await saveOutputIfEnabled(workbook, 'packing-list', outputFilename);
-      await downloadPackingList(workbook, containers.length);
+      await downloadPackingList(workbook, containers.length, outputFilename);
 
       setProgress('');
       alert(`Packing List 生成成功！包含 ${containers.length} 个柜`);
@@ -257,8 +294,9 @@ function App() {
       });
 
       const workbook = await generatePlWithCtnNoFromPacking(containersWithData, vgmData);
-      await saveOutputIfEnabled(workbook, 'pl-with-ctn', 'PL WITH CTN NO.xlsx');
-      await downloadPlWithCtnNo(workbook);
+      const outputFilename = `PL WITH CTN-${toSafeFileNameSegment(customerName, 'customer')}-${toSafeFileNameSegment(batchCode, 'batch')}-${containers.length}柜.xlsx`;
+      await saveOutputIfEnabled(workbook, 'pl-with-ctn', outputFilename);
+      await downloadPlWithCtnNo(workbook, outputFilename);
       setProgress('');
       alert('PL WITH CTN NO. 生成成功！');
     } catch (error) {
@@ -353,6 +391,15 @@ function App() {
                 placeholder="例如：HW / AKP"
               />
             </label>
+            <label>
+              批次编号
+              <input
+                type="text"
+                value={batchCode}
+                onChange={(e) => setBatchCode(normalizeText(e.target.value))}
+                placeholder="例如：第三批货"
+              />
+            </label>
             <label className="checkbox-line">
               <input
                 type="checkbox"
@@ -363,15 +410,35 @@ function App() {
             </label>
             <button
               className="refresh-btn"
-              onClick={() => refreshCloudData(customerName)}
-              disabled={!customerName.trim()}
+              onClick={() => {
+                if (!validateBatchCode()) return;
+                refreshCloudData(customerName, batchCode);
+              }}
+              disabled={!customerName.trim() || !batchCode.trim()}
             >
-              刷新客户文件/历史
+              刷新客户文件
             </button>
           </div>
+          {recentBatches.length > 0 && (
+            <div className="batch-switch">
+              <span>最近批次：</span>
+              <select
+                value={batchCode}
+                onChange={(e) => {
+                  setBatchCode(e.target.value);
+                  refreshCloudData(customerName, e.target.value);
+                }}
+              >
+                <option value="">请选择批次</option>
+                {recentBatches.map((batch) => (
+                  <option key={batch} value={batch}>{batch}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="cloud-lists">
             <div>
-              <h3>客户文件（最近）</h3>
+              <h3>客户文件（{customerName || '-'} / {batchCode || '-'}）</h3>
               <ul>
                 {cloudFiles.slice(0, 8).map((file) => (
                   <li key={file.pathname}>
@@ -396,6 +463,27 @@ function App() {
                   </li>
                 ))}
               </ul>
+              {legacyFiles.length > 0 && (
+                <>
+                  <h3>旧结构文件（兼容）</h3>
+                  <ul>
+                    {legacyFiles.slice(0, 8).map((file) => (
+                      <li key={`legacy-${file.pathname}`}>
+                        <div className="file-item">
+                          <button
+                            type="button"
+                            className="file-link-btn"
+                            onClick={() => handleCloudFileDownload(file.pathname)}
+                            title="下载"
+                          >
+                            {file.pathname}
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           </div>
         </section>
