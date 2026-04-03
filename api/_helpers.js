@@ -1,4 +1,4 @@
-import { list, put } from '@vercel/blob';
+import { head, list, put } from '@vercel/blob';
 
 const HISTORY_BLOB_PATH = 'system/history.json';
 const HISTORY_MAX_ITEMS = 200;
@@ -24,9 +24,11 @@ export function decodeBase64File(base64Data) {
 }
 
 async function readHistory() {
-  const { blobs } = await list({ prefix: HISTORY_BLOB_PATH, limit: 1 });
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const { blobs } = await list({ prefix: HISTORY_BLOB_PATH, limit: 1, token });
   if (!blobs.length) return [];
-  const response = await fetch(blobs[0].url);
+  const meta = await head(blobs[0].pathname, { token });
+  const response = await fetch(meta.downloadUrl);
   if (!response.ok) return [];
   const parsed = await response.json();
   return Array.isArray(parsed) ? parsed : [];
@@ -36,9 +38,10 @@ export async function appendHistory(entry) {
   const current = await readHistory();
   const next = [entry, ...current].slice(0, HISTORY_MAX_ITEMS);
   await put(HISTORY_BLOB_PATH, JSON.stringify(next), {
-    access: 'public',
+    access: 'private',
     addRandomSuffix: false,
     allowOverwrite: true,
-    contentType: 'application/json'
+    contentType: 'application/json',
+    token: process.env.BLOB_READ_WRITE_TOKEN
   });
 }

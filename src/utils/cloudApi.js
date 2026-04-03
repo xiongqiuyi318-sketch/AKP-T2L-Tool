@@ -69,3 +69,11 @@ export async function fetchHistory(limit = 20) {
   if (!res.ok) throw new Error(data.error || '读取历史失败');
   return data.records || [];
 }
+
+export async function getSignedDownloadUrl(pathname) {
+  const res = await fetch(`/api/download?pathname=${encodeURIComponent(pathname)}`);
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok) throw new Error(data.error || '获取下载链接失败');
+  return data.downloadUrl;
+}

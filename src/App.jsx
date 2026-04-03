@@ -7,7 +7,7 @@ import { matchStoneData } from './utils/dataProcessor';
 import { buildWorkbookWithSheets, downloadExcel } from './utils/excelWriter';
 import { generatePackingList, downloadPackingList } from './utils/packingListWriter';
 import { parseVgmFile, generatePlWithCtnNoFromPacking, downloadPlWithCtnNo } from './utils/vgmWriter';
-import { fetchCustomerFiles, fetchHistory, uploadBufferToCloud, uploadFileToCloud } from './utils/cloudApi';
+import { fetchCustomerFiles, fetchHistory, getSignedDownloadUrl, uploadBufferToCloud, uploadFileToCloud } from './utils/cloudApi';
 import './App.css';
 
 function App() {
@@ -75,6 +75,15 @@ function App() {
     } catch (error) {
       console.warn('云端保存失败（不影响本地下载）:', error);
       alert(`云端保存失败，但本地文件仍会下载。\n原因: ${error.message}`);
+    }
+  };
+
+  const handleCloudFileDownload = async (pathname) => {
+    try {
+      const downloadUrl = await getSignedDownloadUrl(pathname);
+      window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      alert(`获取下载链接失败: ${error.message}`);
     }
   };
 
@@ -369,7 +378,13 @@ function App() {
               <ul>
                 {cloudFiles.slice(0, 8).map((file) => (
                   <li key={file.pathname}>
-                    <a href={file.url} target="_blank" rel="noreferrer">{file.pathname}</a>
+                    <button
+                      type="button"
+                      className="file-link-btn"
+                      onClick={() => handleCloudFileDownload(file.pathname)}
+                    >
+                      {file.pathname}
+                    </button>
                   </li>
                 ))}
               </ul>

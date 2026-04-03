@@ -11,8 +11,13 @@ export default async function handler(req, res) {
   try {
     const customer = sanitizeSegment(req.query.customer, 'general');
     const prefix = `customers/${customer}/`;
-    const { blobs } = await list({ prefix, limit: 1000 });
-    return sendJson(res, 200, { customer, files: blobs });
+    const { blobs } = await list({ prefix, limit: 1000, token: process.env.BLOB_READ_WRITE_TOKEN });
+    const files = blobs.map((blob) => ({
+      pathname: blob.pathname,
+      size: blob.size,
+      uploadedAt: blob.uploadedAt
+    }));
+    return sendJson(res, 200, { customer, files });
   } catch (error) {
     return sendJson(res, 500, { error: error.message || '读取文件列表失败' });
   }
