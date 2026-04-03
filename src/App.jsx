@@ -7,7 +7,7 @@ import { matchStoneData } from './utils/dataProcessor';
 import { buildWorkbookWithSheets, downloadExcel } from './utils/excelWriter';
 import { generatePackingList, downloadPackingList } from './utils/packingListWriter';
 import { parseVgmFile, generatePlWithCtnNoFromPacking, downloadPlWithCtnNo } from './utils/vgmWriter';
-import { fetchCustomerFiles, fetchHistory, getSignedDownloadUrl, uploadBufferToCloud, uploadFileToCloud } from './utils/cloudApi';
+import { deleteCloudFile, fetchCustomerFiles, fetchHistory, getSignedDownloadUrl, uploadBufferToCloud, uploadFileToCloud } from './utils/cloudApi';
 import './App.css';
 
 function App() {
@@ -84,6 +84,22 @@ function App() {
       window.open(downloadUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       alert(`获取下载链接失败: ${error.message}`);
+    }
+  };
+
+  const handleCloudFileDelete = async (pathname) => {
+    if (!customerName.trim()) {
+      alert('请先填写客户名录，再执行删除');
+      return;
+    }
+    const ok = confirm(`确定删除云端文件？\n${pathname}`);
+    if (!ok) return;
+    try {
+      await deleteCloudFile({ pathname, customer: customerName, operator: operatorName || 'unknown' });
+      await refreshCloudData(customerName);
+      alert('删除成功');
+    } catch (error) {
+      alert(`删除失败: ${error.message}`);
     }
   };
 
@@ -378,13 +394,24 @@ function App() {
               <ul>
                 {cloudFiles.slice(0, 8).map((file) => (
                   <li key={file.pathname}>
-                    <button
-                      type="button"
-                      className="file-link-btn"
-                      onClick={() => handleCloudFileDownload(file.pathname)}
-                    >
-                      {file.pathname}
-                    </button>
+                    <div className="file-item">
+                      <button
+                        type="button"
+                        className="file-link-btn"
+                        onClick={() => handleCloudFileDownload(file.pathname)}
+                        title="下载"
+                      >
+                        {file.pathname}
+                      </button>
+                      <button
+                        type="button"
+                        className="file-del-btn"
+                        onClick={() => handleCloudFileDelete(file.pathname)}
+                        title="删除"
+                      >
+                        删除
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

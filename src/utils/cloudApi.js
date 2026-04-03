@@ -77,3 +77,15 @@ export async function getSignedDownloadUrl(pathname) {
   if (!res.ok) throw new Error(data.error || '获取下载链接失败');
   return data.downloadUrl;
 }
+
+export async function deleteCloudFile({ pathname, customer, operator }) {
+  const res = await fetch('/api/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pathname, customer, operator })
+  });
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!res.ok) throw new Error(data.error || '删除失败');
+  return data;
+}

@@ -262,6 +262,26 @@ body {
   font-size: 14px;
 }
 
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-del-btn {
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  background: #fff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.file-del-btn:hover {
+  background: #fee2e2;
+}
+
 .info-section ol {
   padding-left: 20px;
   line-height: 1.8;
