@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     const buffer = decodeBase64File(body.base64Data);
     const path = `customers/${customer}/${kind}/${timestamp}_${fileType}_${fileName}`;
     const uploaded = await put(path, buffer, {
-      access: 'private',
+      access: 'public',
       addRandomSuffix: false,
       allowOverwrite: false,
       contentType,

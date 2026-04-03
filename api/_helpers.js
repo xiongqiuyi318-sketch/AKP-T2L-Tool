@@ -38,7 +38,7 @@ export async function appendHistory(entry) {
   const current = await readHistory();
   const next = [entry, ...current].slice(0, HISTORY_MAX_ITEMS);
   await put(HISTORY_BLOB_PATH, JSON.stringify(next), {
-    access: 'private',
+    access: 'public',
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: 'application/json',
