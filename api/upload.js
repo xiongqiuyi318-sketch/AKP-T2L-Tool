@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob';
+import { del, list, put } from '@vercel/blob';
 import { appendHistory, decodeBase64File, getBlobToken, sanitizeSegment, sendJson } from './_helpers.js';
 
 export const config = { runtime: 'nodejs' };
@@ -19,6 +19,19 @@ export default async function handler(req, res) {
     const contentType =
       String(body.contentType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const token = getBlobToken();
+
+    // 对输入模板文件做“同类型覆盖”：同客户+批次下 file1/file2/file3/vgm 仅保留最新1份
+    if (kind === 'inputs' && ['file1', 'file2', 'file3', 'vgm'].includes(fileType)) {
+      const inputPrefix = `customers/${customer}/${batchCode}/inputs/`;
+      const { blobs } = await list({ prefix: inputPrefix, limit: 1000, token });
+      const duplicates = blobs
+        .map((blob) => blob.pathname)
+        .filter((pathname) => pathname.includes(`_${fileType}_`));
+      if (duplicates.length > 0) {
+        await del(duplicates, { token });
+      }
+    }
 
     const buffer = decodeBase64File(body.base64Data);
     const path = `customers/${customer}/${batchCode}/${kind}/${timestamp}_${fileType}_${fileName}`;
@@ -27,7 +40,7 @@ export default async function handler(req, res) {
       addRandomSuffix: false,
       allowOverwrite: false,
       contentType,
-      token: getBlobToken()
+      token
     });
 
     await appendHistory({
