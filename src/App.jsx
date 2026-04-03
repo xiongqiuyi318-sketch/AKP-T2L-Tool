@@ -46,6 +46,18 @@ function App() {
     const name = getDisplayFileName(pathname);
     const cabinetMatch = name.match(/(\d+)柜/i);
     const cabinetPart = cabinetMatch ? `${cabinetMatch[1]}柜` : '';
+    const normalizedName = name.replace(/\.xlsx$/i, '');
+
+    // 兼容旧输出命名：时间戳_类型_真实业务名.xlsx
+    // 例如：2026-..._packing-list_PL-超石-第三批货-9柜.xlsx
+    const legacyOutputMatch = normalizedName.match(/(?:_t2l_|_packing-list_|_pl-with-ctn_)(T2L-|PL WITH CTN-|PL-.*)$/i);
+    if (legacyOutputMatch && legacyOutputMatch[1]) {
+      const extracted = legacyOutputMatch[1];
+      if (/^T2L-/i.test(extracted)) return `T2L（${extracted.replace(/^T2L-/i, '')}）`;
+      if (/^PL WITH CTN-/i.test(extracted)) return `PL WITH CTN（${extracted.replace(/^PL WITH CTN-/i, '')}）`;
+      if (/^PL-/i.test(extracted)) return `PL（${extracted.replace(/^PL-/i, '')}）`;
+    }
+
     if (/[_-]file1[_-]/i.test(name)) return '文件1（BLOCK LIST WITH PRICE）';
     if (/[_-]file2[_-]/i.test(name)) return `文件2（COMBINATION${cabinetPart ? `-${cabinetPart}` : ''}）`;
     if (/[_-]file3[_-]/i.test(name)) return '文件3（T2L模板）';
