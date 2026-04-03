@@ -1,5 +1,5 @@
 import { head } from '@vercel/blob';
-import { sendJson } from './_helpers.js';
+import { getBlobToken, sendJson } from './_helpers.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       return sendJson(res, 400, { error: '非法文件路径' });
     }
 
-    const meta = await head(pathname, { token: process.env.BLOB_READ_WRITE_TOKEN });
+    const meta = await head(pathname, { token: getBlobToken() });
     return sendJson(res, 200, {
       pathname: meta.pathname,
       downloadUrl: meta.downloadUrl

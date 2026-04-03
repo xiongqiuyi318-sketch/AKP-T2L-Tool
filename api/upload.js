@@ -1,5 +1,5 @@
 import { put } from '@vercel/blob';
-import { appendHistory, decodeBase64File, sanitizeSegment, sendJson } from './_helpers.js';
+import { appendHistory, decodeBase64File, getBlobToken, sanitizeSegment, sendJson } from './_helpers.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       addRandomSuffix: false,
       allowOverwrite: false,
       contentType,
-      token: process.env.BLOB_READ_WRITE_TOKEN
+      token: getBlobToken()
     });
 
     await appendHistory({

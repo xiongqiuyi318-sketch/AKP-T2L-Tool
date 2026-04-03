@@ -23,8 +23,12 @@ export function decodeBase64File(base64Data) {
   return Buffer.from(base64Data, 'base64');
 }
 
+export function getBlobToken() {
+  return process.env.PUBLICBLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+}
+
 async function readHistory() {
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  const token = getBlobToken();
   const { blobs } = await list({ prefix: HISTORY_BLOB_PATH, limit: 1, token });
   if (!blobs.length) return [];
   const meta = await head(blobs[0].pathname, { token });
@@ -42,6 +46,6 @@ export async function appendHistory(entry) {
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: 'application/json',
-    token: process.env.BLOB_READ_WRITE_TOKEN
+    token: getBlobToken()
   });
 }

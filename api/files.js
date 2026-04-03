@@ -1,5 +1,5 @@
 import { list } from '@vercel/blob';
-import { sanitizeSegment, sendJson } from './_helpers.js';
+import { getBlobToken, sanitizeSegment, sendJson } from './_helpers.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   try {
     const customer = sanitizeSegment(req.query.customer, 'general');
     const prefix = `customers/${customer}/`;
-    const { blobs } = await list({ prefix, limit: 1000, token: process.env.BLOB_READ_WRITE_TOKEN });
+    const { blobs } = await list({ prefix, limit: 1000, token: getBlobToken() });
     const files = blobs.map((blob) => ({
       pathname: blob.pathname,
       size: blob.size,
