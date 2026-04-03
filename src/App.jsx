@@ -42,6 +42,27 @@ function App() {
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '') || fallback;
   const getDisplayFileName = (pathname) => String(pathname || '').split('/').pop() || pathname;
+  const humanizeCloudFileName = (pathname) => {
+    const name = getDisplayFileName(pathname);
+    const cabinetMatch = name.match(/(\d+)柜/i);
+    const cabinetPart = cabinetMatch ? `${cabinetMatch[1]}柜` : '';
+    if (/[_-]file1[_-]/i.test(name)) return '文件1（BLOCK LIST WITH PRICE）';
+    if (/[_-]file2[_-]/i.test(name)) return `文件2（COMBINATION${cabinetPart ? `-${cabinetPart}` : ''}）`;
+    if (/[_-]file3[_-]/i.test(name)) return '文件3（T2L模板）';
+    if (/^T2L-/i.test(name)) {
+      const label = name.replace(/^T2L-/i, '').replace(/\.xlsx$/i, '');
+      return `T2L（${label}）`;
+    }
+    if (/^PL WITH CTN-/i.test(name)) {
+      const label = name.replace(/^PL WITH CTN-/i, '').replace(/\.xlsx$/i, '');
+      return `PL WITH CTN（${label}）`;
+    }
+    if (/^PL-/i.test(name)) {
+      const label = name.replace(/^PL-/i, '').replace(/\.xlsx$/i, '');
+      return `PL（${label}）`;
+    }
+    return name;
+  };
 
   const validateBatchCode = () => {
     if (!cloudEnabled) return true;
@@ -450,7 +471,7 @@ function App() {
                         onClick={() => handleCloudFileDownload(file.pathname)}
                         title={file.pathname}
                       >
-                        {getDisplayFileName(file.pathname)}
+                        {humanizeCloudFileName(file.pathname)}
                       </button>
                       <button
                         type="button"
@@ -477,7 +498,7 @@ function App() {
                             onClick={() => handleCloudFileDownload(file.pathname)}
                             title={file.pathname}
                           >
-                            {getDisplayFileName(file.pathname)}
+                            {humanizeCloudFileName(file.pathname)}
                           </button>
                         </div>
                       </li>
