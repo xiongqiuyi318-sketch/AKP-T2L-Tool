@@ -41,6 +41,7 @@ function App() {
       .replace(/\s+/g, '')
       .replace(/-+/g, '-')
       .replace(/^-+|-+$/g, '') || fallback;
+  const getDisplayFileName = (pathname) => String(pathname || '').split('/').pop() || pathname;
 
   const validateBatchCode = () => {
     if (!cloudEnabled) return true;
@@ -447,9 +448,9 @@ function App() {
                         type="button"
                         className="file-link-btn"
                         onClick={() => handleCloudFileDownload(file.pathname)}
-                        title="下载"
+                        title={file.pathname}
                       >
-                        {file.pathname}
+                        {getDisplayFileName(file.pathname)}
                       </button>
                       <button
                         type="button"
@@ -474,9 +475,9 @@ function App() {
                             type="button"
                             className="file-link-btn"
                             onClick={() => handleCloudFileDownload(file.pathname)}
-                            title="下载"
+                            title={file.pathname}
                           >
-                            {file.pathname}
+                            {getDisplayFileName(file.pathname)}
                           </button>
                         </div>
                       </li>
