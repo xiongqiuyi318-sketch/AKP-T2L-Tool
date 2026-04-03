@@ -76,6 +76,7 @@ body {
 
 .upload-section,
 .parameter-section,
+.cloud-section,
 .action-section,
 .info-section {
   background: white;
@@ -86,6 +87,7 @@ body {
 }
 
 .upload-section h2,
+.cloud-section h2,
 .info-section h3 {
   margin: 0 0 20px 0;
   color: #333;
@@ -187,6 +189,68 @@ body {
   font-weight: 500;
 }
 
+.cloud-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cloud-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #333;
+  font-weight: 600;
+}
+
+.cloud-controls input[type="text"] {
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.checkbox-line {
+  flex-direction: row !important;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.refresh-btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refresh-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.cloud-lists {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.cloud-lists h3 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+
+.cloud-lists ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #444;
+}
+
 .info-section ol {
   padding-left: 20px;
   line-height: 1.8;
@@ -227,6 +291,7 @@ body {
 
   .upload-section,
   .parameter-section,
+  .cloud-section,
   .action-section,
   .info-section {
     padding: 20px;
@@ -244,5 +309,10 @@ body {
     margin-left: 0;
     padding: 12px 20px;
     font-size: 16px;
+  }
+
+  .cloud-controls,
+  .cloud-lists {
+    grid-template-columns: 1fr;
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import FileUploader from './components/FileUploader';
 import ParameterInput from './components/ParameterInput';
 import TemplateDownload from './components/TemplateDownload';
@@ -7,6 +7,7 @@ import { matchStoneData } from './utils/dataProcessor';
 import { buildWorkbookWithSheets, downloadExcel } from './utils/excelWriter';
 import { generatePackingList, downloadPackingList } from './utils/packingListWriter';
 import { parseVgmFile, generatePlWithCtnNoFromPacking, downloadPlWithCtnNo } from './utils/vgmWriter';
+import { fetchCustomerFiles, fetchHistory, uploadBufferToCloud, uploadFileToCloud } from './utils/cloudApi';
 import './App.css';
 
 function App() {
@@ -19,26 +20,87 @@ function App() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [operatorName, setOperatorName] = useState('');
+  const [cloudEnabled, setCloudEnabled] = useState(true);
+  const [cloudFiles, setCloudFiles] = useState([]);
+  const [historyRecords, setHistoryRecords] = useState([]);
+
+  useEffect(() => {
+    fetchHistory(20).then(setHistoryRecords).catch(() => {});
+  }, []);
+
+  const refreshCloudData = async (customer) => {
+    if (!customer) return;
+    try {
+      const [files, records] = await Promise.all([
+        fetchCustomerFiles(customer),
+        fetchHistory(20)
+      ]);
+      setCloudFiles(files);
+      setHistoryRecords(records);
+    } catch (error) {
+      console.warn('刷新云端数据失败:', error);
+    }
+  };
+
+  const saveInputIfEnabled = async (file, fileType) => {
+    if (!cloudEnabled || !customerName.trim()) return;
+    try {
+      await uploadFileToCloud({
+        file,
+        customer: customerName,
+        operator: operatorName || 'unknown',
+        fileType,
+        kind: 'inputs'
+      });
+      await refreshCloudData(customerName);
+    } catch (error) {
+      console.warn('云端归档失败（不影响本地解析）:', error);
+    }
+  };
+
+  const saveOutputIfEnabled = async (workbook, fileType, filename) => {
+    if (!cloudEnabled || !customerName.trim()) return;
+    try {
+      const buffer = await workbook.xlsx.writeBuffer();
+      await uploadBufferToCloud({
+        buffer,
+        filename,
+        customer: customerName,
+        operator: operatorName || 'unknown',
+        fileType
+      });
+      await refreshCloudData(customerName);
+    } catch (error) {
+      console.warn('云端保存失败（不影响本地下载）:', error);
+      alert(`云端保存失败，但本地文件仍会下载。\n原因: ${error.message}`);
+    }
+  };
 
   const handleFile1Upload = async (file) => {
     const data = await parseStoneInfo(file);
     setStoneInfo(data);
+    await saveInputIfEnabled(file, 'file1');
     console.log('文件1解析结果（石头数据）:', data);
   };
 
   const handleFile2Upload = async (file) => {
     const containerData = await parseContainerPlan(file);
     setContainers(containerData);
+    await saveInputIfEnabled(file, 'file2');
   };
 
   const handleFile3Upload = async (file) => {
     const templateData = await loadTemplate(file);
     setTemplate(templateData);
+    await saveInputIfEnabled(file, 'file3');
   };
 
   const handleVgmUpload = async (file) => {
     const parsedVgm = await parseVgmFile(file);
     setVgmData(parsedVgm);
+    await saveInputIfEnabled(file, 'vgm');
     console.log('VGM解析结果:', parsedVgm);
   };
 
@@ -97,8 +159,9 @@ function App() {
 
       setProgress('正在下载文件...');
 
-      // 下载文件
-      await downloadExcel(workbook, `T2L_Output_${startNumber}-${startNumber + containers.length - 1}.xlsx`);
+      const outputFilename = `T2L_Output_${startNumber}-${startNumber + containers.length - 1}.xlsx`;
+      await saveOutputIfEnabled(workbook, 't2l', outputFilename);
+      await downloadExcel(workbook, outputFilename);
 
       setProgress('');
       alert(`成功生成 ${containers.length} 个T2L工作表！`);
@@ -141,7 +204,8 @@ function App() {
 
       setProgress('正在下载文件...');
 
-      // 下载文件
+      const outputFilename = `Packing List_${containers.length}.xlsx`;
+      await saveOutputIfEnabled(workbook, 'packing-list', outputFilename);
       await downloadPackingList(workbook, containers.length);
 
       setProgress('');
@@ -178,6 +242,7 @@ function App() {
       });
 
       const workbook = await generatePlWithCtnNoFromPacking(containersWithData, vgmData);
+      await saveOutputIfEnabled(workbook, 'pl-with-ctn', 'PL WITH CTN NO.xlsx');
       await downloadPlWithCtnNo(workbook);
       setProgress('');
       alert('PL WITH CTN NO. 生成成功！');
@@ -259,6 +324,67 @@ function App() {
             setYear={setYear}
             containerCount={containers?.length || 0}
           />
+        </section>
+        
+        <section className="cloud-section">
+          <h2>☁️ 云端归档（可选）</h2>
+          <div className="cloud-controls">
+            <label>
+              客户名录
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="例如：HW / AKP"
+              />
+            </label>
+            <label>
+              操作人
+              <input
+                type="text"
+                value={operatorName}
+                onChange={(e) => setOperatorName(e.target.value)}
+                placeholder="例如：Sabrina"
+              />
+            </label>
+            <label className="checkbox-line">
+              <input
+                type="checkbox"
+                checked={cloudEnabled}
+                onChange={(e) => setCloudEnabled(e.target.checked)}
+              />
+              启用云端保存（上传与生成结果都会归档）
+            </label>
+            <button
+              className="refresh-btn"
+              onClick={() => refreshCloudData(customerName)}
+              disabled={!customerName.trim()}
+            >
+              刷新客户文件/历史
+            </button>
+          </div>
+          <div className="cloud-lists">
+            <div>
+              <h3>客户文件（最近）</h3>
+              <ul>
+                {cloudFiles.slice(0, 8).map((file) => (
+                  <li key={file.pathname}>
+                    <a href={file.url} target="_blank" rel="noreferrer">{file.pathname}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3>最近记录</h3>
+              <ul>
+                {historyRecords.slice(0, 8).map((record, idx) => (
+                  <li key={`${record.time}-${idx}`}>
+                    [{record.time}] {record.operator} / {record.customer} / {record.fileName}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </section>
 
         <section className="action-section">
